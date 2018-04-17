@@ -6,14 +6,23 @@ Everything configurable in ReqMgr is defined here.
 
 import socket
 import time
+import re
 from WMCore.Configuration import Configuration
 from os import path
+
+def getAMQSecret(filePath):
+    result = {}
+    with open(filePath, "r") as f:
+        sfile = f.read()
+    m = re.search("(^USER_AMQ=)(\S+)", sfile)
+    result["USER_AMQ"] = m.group(2)
+    m = re.search("(^PASS_AMQ=)(\S+)", sfile)
+    result["PASS_AMQ"] = m.group(2)
+    return result
 
 HOST = socket.gethostname().lower()
 BASE_URL = "@@BASE_URL@@"
 DBS_INS = "@@DBS_INS@@"
-USER_AMQ = "@@USER_AMQ@@"
-PASS_AMQ = "@@PASS_AMQ@@"
 COUCH_URL = "%s/couchdb" % BASE_URL
 LOG_DB_URL = "%s/wmstats_logdb" % COUCH_URL
 LOG_REPORTER = "reqmgr2"
@@ -179,8 +188,10 @@ if HOST.startswith("vocms0136") or HOST.startswith("vocms0731") or HOST.startswi
     heartbeatMonitor.log_reporter = LOG_REPORTER
     # AMQ MonIT settings
     heartbeatMonitor.post_to_amq = True if HOST.startswith("vocms0136") else False  # only production nodes!
-    heartbeatMonitor.user_amq = USER_AMQ
-    heartbeatMonitor.pass_amq = PASS_AMQ
+    amq_secret_file = "%s/auth/reqmgr2/amq_secret" % ROOTDIR
+    secrets = getAMQSecret(amq_secret_file)
+    heartbeatMonitor.user_amq = secrets["USER_AMQ"]
+    heartbeatMonitor.pass_amq = secrets["PASS_AMQ"]
     heartbeatMonitor.topic_amq = AMQ_TOPIC
     heartbeatMonitor.host_port_amq = AMQ_HOST_PORT
     #list all the thread need to be monitored
